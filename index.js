@@ -21,6 +21,33 @@ const client = new MongoClient(uri, {
   },
 });
 
+
+const verifyToken = async (req, res, next) => {
+  const { authorization } = req.headers;
+  const token = authorization?.split(" ")[1];
+
+  if (!token) {
+    return res
+      .status(401)
+      .json({ message: "Unauthorized access. Token missing." });
+  }
+
+  try {
+    
+    const secret = process.env.JWT_SECRET || "super_secret_medi_queue_key_2026";
+    const decoded = jwt.verify(token, secret);
+    req.user = decoded; 
+
+    next();
+  } catch (error) {
+    console.error("Token validation failed:", error.message);
+    return res
+      .status(401)
+      .json({ message: "Unauthorized access. Invalid token." });
+  }
+};
+
+
 app.get("/", (req, res) => {
   res.send("MediQueue Tutor Booking System Server Stack Running Live...");
 });
