@@ -21,25 +21,21 @@ const client = new MongoClient(uri, {
   },
 });
 
-
-
-//GET ALL TUTORS (With Search & Date Filter)
-
+// GET ALL TUTORS (With Multi-field Search & Date Filter)
 app.get("/tutors", async (req, res) => {
   try {
     const { search, startDate, endDate, limit } = req.query;
 
     let query = {};
 
-
     if (search) {
-      query.tutorName = {
-        $regex: search,
-        $options: "i",
-      };
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { tutorName: { $regex: search, $options: "i" } },
+        { language: { $regex: search, $options: "i" } },
+      ];
     }
 
-  
     if (startDate || endDate) {
       query.sessionStartDate = {};
 
@@ -51,20 +47,53 @@ app.get("/tutors", async (req, res) => {
         query.sessionStartDate.$lte = endDate;
       }
     }
-
+    const database = client.db("tutor");
+    const tutorsCollection = database.collection("booking");
     let cursor = tutorsCollection.find(query);
-
 
     if (limit) {
       cursor = cursor.limit(parseInt(limit));
     }
 
     const result = await cursor.toArray();
+
+    if (!result || result.length === 0) {
+      return res.send([]);
+    }
+
     res.send(result);
   } catch (error) {
     res.status(500).send({
       message: error.message,
     });
+  }
+});
+
+
+// GET  FETCH SINGLE TUTOR BY ID
+
+app.get("/tutors/:id", async (req, res) => {
+  try {
+    if (!tutorsCollection) {
+      return res.status(500).json({ message: "Database collections are not ready." });
+    }
+
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Tutor ID format" });
+    }
+
+    const query = { _id: new ObjectId(id) };
+    const result = await tutorsCollection.findOne(query);
+
+    if (!result) {
+      return res.status(404).json({ message: "Tutor session not found." });
+    }
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: error.message });
   }
 });
 
