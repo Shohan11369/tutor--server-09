@@ -22,31 +22,51 @@ const client = new MongoClient(uri, {
 });
 
 
-const verifyToken = async (req, res, next) => {
-  const { authorization } = req.headers;
-  const token = authorization?.split(" ")[1];
 
-  if (!token) {
-    return res
-      .status(401)
-      .json({ message: "Unauthorized access. Token missing." });
-  }
+//GET ALL TUTORS (With Search & Date Filter)
 
+app.get("/tutors", async (req, res) => {
   try {
-    
-    const secret = process.env.JWT_SECRET || "super_secret_medi_queue_key_2026";
-    const decoded = jwt.verify(token, secret);
-    req.user = decoded; 
+    const { search, startDate, endDate, limit } = req.query;
 
-    next();
+    let query = {};
+
+
+    if (search) {
+      query.tutorName = {
+        $regex: search,
+        $options: "i",
+      };
+    }
+
+  
+    if (startDate || endDate) {
+      query.sessionStartDate = {};
+
+      if (startDate) {
+        query.sessionStartDate.$gte = startDate;
+      }
+
+      if (endDate) {
+        query.sessionStartDate.$lte = endDate;
+      }
+    }
+
+    let cursor = tutorsCollection.find(query);
+
+
+    if (limit) {
+      cursor = cursor.limit(parseInt(limit));
+    }
+
+    const result = await cursor.toArray();
+    res.send(result);
   } catch (error) {
-    console.error("Token validation failed:", error.message);
-    return res
-      .status(401)
-      .json({ message: "Unauthorized access. Invalid token." });
+    res.status(500).send({
+      message: error.message,
+    });
   }
-};
-
+});
 
 app.get("/", (req, res) => {
   res.send("MediQueue Tutor Booking System Server Stack Running Live...");
