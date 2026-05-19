@@ -97,6 +97,51 @@ app.get("/tutors/:id", async (req, res) => {
   }
 });
 
+
+//POST BOOK SESSION WITH AUTO SLOT DECREASE
+
+app.post("/bookings", async (req, res) => {
+  try {
+    if (!bookingCollection || !tutorsCollection) {
+      return res.status(500).json({ message: "Database collections are not ready." });
+    }
+
+    const bookingInfo = req.body;
+    const { tutorId } = bookingInfo;
+
+    if (!tutorId || !ObjectId.isValid(tutorId)) {
+      return res.status(400).json({ message: "Valid Tutor ID is required." });
+    }
+
+
+    const tutor = await tutorsCollection.findOne({ _id: new ObjectId(tutorId) });
+    if (!tutor) {
+      return res.status(404).json({ message: "Tutor session not found." });
+    }
+
+    if (parseInt(tutor.totalSlot) <= 0) {
+      return res.status(400).json({ message: "This session is fully booked. You can't join at the moment." });
+    }
+
+  
+    const formattedBooking = {
+      ...bookingInfo,
+      bookedAt: new Date()
+    };
+    const bookingResult = await bookingCollection.insertOne(formattedBooking);
+
+    
+    await tutorsCollection.updateOne(
+      { _id: new ObjectId(tutorId) },
+      { $inc: { totalSlot: -1 } }
+    );
+
+    res.status(201).send(bookingResult);
+  } catch (error) {
+    res.status(500).send({ message: error.message });
+  }
+});
+
 app.get("/", (req, res) => {
   res.send("MediQueue Tutor Booking System Server Stack Running Live...");
 });
