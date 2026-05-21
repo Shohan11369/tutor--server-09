@@ -11,7 +11,7 @@ const port = process.env.PORT || 8080;
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: `${process.env.CLIENT_URL}`,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -229,6 +229,10 @@ async function run() {
         res.status(500).send({ message: "Server error" });
       }
     });
+
+    app.get("/", (req, res) => {
+  res.send("MediQueue Server Running");
+});
 
     app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   } catch (error) {
