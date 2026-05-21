@@ -1,4 +1,3 @@
-
 const express = require("express");
 const dotenv = require("dotenv");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -16,7 +15,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.use(express.json());
@@ -40,7 +39,7 @@ const verifyToken = async (req, res, next) => {
     }
 
     const JWKS = createRemoteJWKSet(
-      new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
+      new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
     );
 
     const { payload } = await jwtVerify(token, JWKS);
@@ -172,7 +171,7 @@ async function run() {
               bookedAt: new Date(),
             },
             $inc: { totalSlot: -1 },
-          }
+          },
         );
 
         res.send({
@@ -219,7 +218,7 @@ async function run() {
 
         await tutorsCollection.updateOne(
           { _id: new ObjectId(booking.tutorId) },
-          { $inc: { totalSlot: 1 } }
+          { $inc: { totalSlot: 1 } },
         );
 
         res.send({
@@ -231,9 +230,7 @@ async function run() {
       }
     });
 
-    app.listen(port, () =>
-      console.log(`🚀 Server running on port ${port}`)
-    );
+    app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   } catch (error) {
     console.log("DB ERROR:", error);
   }
@@ -242,7 +239,6 @@ async function run() {
 run().catch(console.dir);
 
 module.exports = app;
-
 
 // const express = require("express");
 // const dotenv = require("dotenv");
