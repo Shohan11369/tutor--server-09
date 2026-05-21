@@ -230,14 +230,16 @@ async function run() {
       }
     });
 
-    app.get("/", (req, res) => {
-  res.send("MediQueue Server Running");
-});
-
     app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   } catch (error) {
     console.log("DB ERROR:", error);
   }
+
+  app.get("/", (req, res) => {
+    res.status(200).send("MediQueue API running 🚀");
+  });
+
+  module.exports = app;
 }
 
 run().catch(console.dir);
