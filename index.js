@@ -11,8 +11,8 @@ const port = process.env.PORT || 8080;
 
 app.use(
   cors({
-    origin: "https://tutor-front-end-09.vercel.app",
-    
+    // origin: "https://tutor-front-end-09.vercel.app",
+    origin:"*",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -240,97 +240,3 @@ async function run() {
 run().catch(console.dir);
 
 module.exports = app;
-
-// const express = require("express");
-// const dotenv = require("dotenv");
-// const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-// const cors = require("cors");
-// const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
-
-// dotenv.config();
-// const app = express();
-// const port = process.env.PORT || 8080;
-
-// // CORS কনফিগারেশন - সব রিকোয়েস্ট পারমিট করার জন্য
-// app.use(cors({
-//   origin: "http://localhost:3000",
-//   credentials: true,
-//   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-//   allowedHeaders: ["Content-Type", "Authorization"]
-// }));
-// app.use(express.json());
-
-// const uri = process.env.MONGODB_URI;
-// const client = new MongoClient(uri, {
-//   serverApi: { version: ServerApiVersion.v1, strict: true, deprecationErrors: true },
-// });
-
-// // JWT ভেরিফিকেশন মিডলওয়্যার
-// const verifyToken = async (req, res, next) => {
-//   const authHeader = req.headers.authorization;
-//   const token = authHeader?.split(" ")[1];
-
-//   if (!token) return res.status(401).json({ message: "Unauthorized: No token" });
-
-//   try {
-//     // এখানে URL টি চেক করে নিন, .env এ CLIENT_URL থাকলে সেটি ব্যবহার করবে
-//     const jwksUrl = new URL(`${process.env.CLIENT_URL || 'http://localhost:3000'}/api/auth/jwks`);
-//     const currentJWKS = createRemoteJWKSet(jwksUrl);
-//     const { payload } = await jwtVerify(token, currentJWKS);
-//     req.user = payload;
-//     next();
-//   } catch (error) {
-//     console.error("JWT Error:", error.message);
-//     return res.status(401).json({ message: "Invalid token" });
-//   }
-// };
-
-// async function run() {
-//   try {
-//     await client.connect();
-//     const db = client.db("tutor");
-//     const tutorsCollection = db.collection("booking");
-
-//     // পাবলিক রাউট
-//     app.get("/tutors", async (req, res) => {
-//       const { search } = req.query;
-//       let query = search ? { $or: [{ tutorName: { $regex: search, $options: "i" } }, { subject: { $regex: search, $options: "i" } }] } : {};
-//       const result = await tutorsCollection.find(query).toArray();
-//       res.send(result);
-//     });
-
-//     app.get("/featured-tutors", async (req, res) => {
-//       try {
-//         const result = await tutorsCollection.find({}).limit(4).toArray();
-//         res.send(result);
-//       } catch (error) { res.status(500).send({ message: error.message }); }
-//     });
-
-//     // সুরক্ষিত রাউট - verifyToken মিডলওয়্যারসহ
-// const verifyToken = (req, res, next) => {
-//   const authHeader = req.headers.authorization;
-
-//   if (!authHeader) {
-//     return res.status(401).json({ message: "No token" });
-//   }
-
-//   const token = authHeader.split(" ")[1];
-
-//   if (!token || token === "undefined") {
-//     return res.status(401).json({ message: "Invalid token" });
-//   }
-
-//   try {
-//     req.user = { token }; // simple pass
-//     next();
-//   } catch (err) {
-//     return res.status(401).json({ message: "Unauthorized" });
-//   }
-// };
-
-//     console.log("🟢 Database Connected!");
-//   } catch (error) { console.error("🔴 Database error:", error); }
-// }
-
-// run().catch(console.dir);
-// app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
