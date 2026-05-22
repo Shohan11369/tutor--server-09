@@ -45,7 +45,7 @@ client
   .then(() => {
     const db = client.db("tutor");
 
-    tutorsCollection = db.collection("tutors");
+    tutorsCollection = db.collection("booking");
     bookingsCollection = db.collection("bookings");
 
     console.log("🟢 MongoDB Connected");
