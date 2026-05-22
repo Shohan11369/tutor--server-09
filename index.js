@@ -35,7 +35,7 @@ const client = new MongoClient(process.env.MONGODB_URI, {
   },
 });
 
-// ⚡ GLOBAL COLLECTIONS (IMPORTANT FIX FOR VERCEL)
+//GLOBAL COLLECTIONS (IMPORTANT FIX FOR VERCEL)
 let tutorsCollection;
 let bookingsCollection;
 
@@ -52,7 +52,7 @@ client
   })
   .catch((err) => console.log("Mongo Error:", err));
 
-// ================= JWT VERIFY =================
+// JWT VERIFY 
 const verifyToken = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
@@ -105,34 +105,8 @@ app.post("/tutor", async (req, res) => {
 });
 
 // GET ALL TUTORS
-// app.get("/tutor", async (req, res) => {
-//   try {
-//     const search = req.query.search || "";
-
-//     const query = search
-//       ? {
-//           $or: [
-//             { tutorName: { $regex: search, $options: "i" } },
-//             { subject: { $regex: search, $options: "i" } },
-//           ],
-//         }
-//       : {};
-
-//     const result = await tutorsCollection.find(query).toArray();
-//     res.send(result);
-//   } catch (error) {
-//     res.status(500).send({ message: "Failed to load tutors" });
-//   }
-// });
-
 app.get("/tutor", async (req, res) => {
   try {
-    if (!tutorsCollection) {
-      return res.status(503).send({
-        message: "Database not ready yet",
-      });
-    }
-
     const search = req.query.search || "";
 
     const query = search
@@ -147,10 +121,11 @@ app.get("/tutor", async (req, res) => {
     const result = await tutorsCollection.find(query).toArray();
     res.send(result);
   } catch (error) {
-    console.log(error);
-    res.status(500).send({ message: "Server error" });
+    res.status(500).send({ message: "Failed to load tutors" });
   }
 });
+
+
 
 // FEATURED
 app.get("/featured-tutors", async (req, res) => {
