@@ -77,7 +77,7 @@ async function run() {
     const db = client.db("tutor");
 
     // COLLECTIONS
-    const tutorsCollection = db.collection("tutors-collection");
+    const tutorsCollection = db.collection("tutors");
     const bookingsCollection = db.collection("bookings");
 
     // =========================================
