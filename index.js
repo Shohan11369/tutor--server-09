@@ -11,8 +11,8 @@ const port = process.env.PORT || 8080;
 
 app.use(
   cors({
-    // origin: "https://tutor-front-end-09.vercel.app",
-    origin:"*",
+    origin: "https://tutor-front-end-09.vercel.app",
+    // origin:"*",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -28,6 +28,10 @@ const client = new MongoClient(process.env.MONGODB_URI, {
     strict: true,
     deprecationErrors: true,
   },
+});
+
+app.get("/tutors", (req, res) => {
+  res.status(200).json({ message: "API is working!" });
 });
 
 // JWT VERIFY
