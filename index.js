@@ -30,9 +30,6 @@ const client = new MongoClient(process.env.MONGODB_URI, {
   },
 });
 
-app.get("/tutors", (req, res) => {
-  res.status(200).json({ message: "API is working!" });
-});
 
 // JWT VERIFY
 const verifyToken = async (req, res, next) => {
@@ -69,7 +66,7 @@ async function run() {
     console.log("🟢 MongoDB Connected");
 
     // ADD TUTOR
-    app.post("/tutors", async (req, res) => {
+    app.post("/tutor", async (req, res) => {
       try {
         const newTutor = req.body;
 
@@ -93,7 +90,7 @@ async function run() {
     });
 
     // GET ALL TUTORS
-    app.get("/tutors", async (req, res) => {
+    app.get("/tutor", async (req, res) => {
       const search = req.query.search;
 
       const query = search
@@ -116,7 +113,7 @@ async function run() {
     });
 
     // SINGLE TUTOR
-    app.get("/tutors/:id", async (req, res) => {
+    app.get("/tutor/:id", async (req, res) => {
       try {
         const result = await tutorsCollection.findOne({
           _id: new ObjectId(req.params.id),
@@ -133,7 +130,7 @@ async function run() {
     });
 
     // BOOK TUTOR
-    app.patch("/tutors/:id", verifyToken, async (req, res) => {
+    app.patch("/tutor/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
 
