@@ -30,7 +30,6 @@ const client = new MongoClient(process.env.MONGODB_URI, {
   },
 });
 
-
 // JWT VERIFY
 const verifyToken = async (req, res, next) => {
   try {
@@ -49,7 +48,7 @@ const verifyToken = async (req, res, next) => {
     req.user = payload;
     next();
   } catch (error) {
-    console.log("JWT ERROR:", error);
+    console.error("JWT ERROR Detail:", error.message);
     return res.status(401).json({ message: "Invalid token" });
   }
 };
@@ -234,7 +233,7 @@ async function run() {
 
     app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   } catch (error) {
-    console.log("DB ERROR:", error);
+    console.log("DB error:", error);
   }
 }
 
