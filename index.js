@@ -12,7 +12,11 @@ const port = process.env.PORT || 8080;
 // ================= MIDDLEWARE =================
 app.use(
   cors({
-    origin: "https://tutor-front-end-09.vercel.app",
+    
+    origin: [
+    "http://localhost:3000",
+    "https://tutor-front-end-09.vercel.app"
+  ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -65,7 +69,7 @@ const verifyToken = async (req, res, next) => {
     }
 
     const JWKS = createRemoteJWKSet(
-      new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+      new URL("https://tutor-server-09.onrender.com/api/auth/jwks")
     );
 
     const { payload } = await jwtVerify(token, JWKS);
