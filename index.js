@@ -1,9 +1,9 @@
 
+
 const express = require("express");
 const dotenv = require("dotenv");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
-const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 
 dotenv.config();
 
@@ -12,16 +12,16 @@ const port = process.env.PORT || 8080;
 
 app.use(
   cors({
-    origin:  process.env.CLIENT_URL,
+    origin: process.env.CLIENT_URL,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  }),
+  })
 );
 
 app.use(express.json());
 
-// MONGO SETUP
+// MongoDB setup
 const client = new MongoClient(process.env.MONGODB_URI, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -30,39 +30,104 @@ const client = new MongoClient(process.env.MONGODB_URI, {
   },
 });
 
-// JWT VERIFY
-const verifyToken = async (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.split(" ")[1];
+let db;
+let usersCollection;
+let tutorsCollection;
+let bookingsCollection;
 
-    if (!token) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+// SIMPLE TOKEN CHECK (basic)
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
 
-    const JWKS = createRemoteJWKSet(
-      new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
-    );
-
-    const { payload } = await jwtVerify(token, JWKS);
-
-    req.user = payload;
-    next();
-  } catch (error) {
-    console.log("JWT ERROR:", error);
-    return res.status(401).json({ message: "Invalid token" });
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
+
+  req.user = { email: token }; // simple fake auth (replace later with JWT)
+  next();
 };
 
-// MAIN
 async function run() {
   try {
     await client.connect();
 
-    const db = client.db("tutor");
-    const tutorsCollection = db.collection("booking");
-    const bookingsCollection = db.collection("bookings");
+    db = client.db("tutor");
+    usersCollection = db.collection("users");
+    tutorsCollection = db.collection("booking");
+    bookingsCollection = db.collection("bookings");
 
     console.log("🟢 MongoDB Connected");
+
+    // =========================
+    // AUTH ROUTES
+    // =========================
+
+    // REGISTER
+    app.post("/api/auth/sign-up/email", async (req, res) => {
+      try {
+        const { name, email, password, role, image } = req.body;
+
+        const exists = await usersCollection.findOne({ email });
+
+        if (exists) {
+          return res.status(400).json({ message: "User already exists" });
+        }
+
+        const result = await usersCollection.insertOne({
+          name,
+          email,
+          password,
+          role,
+          image,
+          createdAt: new Date(),
+        });
+
+        res.json({
+          success: true,
+          userId: result.insertedId,
+        });
+      } catch (err) {
+        res.status(500).json({ message: "Registration failed" });
+      }
+    });
+
+    // LOGIN
+    app.post("/api/auth/sign-in/email", async (req, res) => {
+      try {
+        const { email, password } = req.body;
+
+        const user = await usersCollection.findOne({ email });
+
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        if (user.password !== password) {
+          return res.status(401).json({ message: "Wrong password" });
+        }
+
+        // simple token (email return)
+        res.json({
+          success: true,
+          token: user.email,
+          user,
+        });
+      } catch (err) {
+        res.status(500).json({ message: "Login failed" });
+      }
+    });
+
+    // SESSION
+    app.get("/api/auth/get-session", (req, res) => {
+      res.json({
+        authenticated: false,
+        user: null,
+      });
+    });
+
+    // =========================
+    // TUTOR ROUTES
+    // =========================
 
     // ADD TUTOR
     app.post("/tutors", async (req, res) => {
@@ -83,7 +148,6 @@ async function run() {
           insertedId: result.insertedId,
         });
       } catch (error) {
-        console.log(error);
         res.status(500).send({ message: "Failed to add tutor" });
       }
     });
@@ -123,7 +187,7 @@ async function run() {
         }
 
         res.send(result);
-      } catch (error) {
+      } catch {
         res.status(500).send({ message: "Invalid ID" });
       }
     });
@@ -132,6 +196,7 @@ async function run() {
     app.patch("/tutors/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
+        const data = req.body;
 
         const tutor = await tutorsCollection.findOne({
           _id: new ObjectId(id),
@@ -144,43 +209,25 @@ async function run() {
           });
         }
 
-        const data = req.body;
-
         await bookingsCollection.insertOne({
           tutorId: id,
-          studentName: data.studentName,
-          studentEmail: data.studentEmail,
-          tutorName: data.tutorName,
-          tutorPhoto: data.tutorPhoto,
-          subject: data.subject,
-          hourlyFee: data.hourlyFee,
-          confirmNumber: data.confirmNumber,
+          ...data,
           bookedAt: new Date(),
         });
 
-        const result = await tutorsCollection.updateOne(
+        await tutorsCollection.updateOne(
           { _id: new ObjectId(id) },
           {
-            $set: {
-              studentName: data.studentName,
-              studentEmail: data.studentEmail,
-              tutorName: data.tutorName,
-              tutorPhoto: data.tutorPhoto,
-              subject: data.subject,
-              hourlyFee: data.hourlyFee,
-              booked: true,
-              bookedAt: new Date(),
-            },
             $inc: { totalSlot: -1 },
-          },
+            $set: { booked: true },
+          }
         );
 
         res.send({
           success: true,
           message: "Booking successful",
-          result,
         });
-      } catch (error) {
+      } catch {
         res.status(500).send({ message: "Server error" });
       }
     });
@@ -195,7 +242,7 @@ async function run() {
           .toArray();
 
         res.send(result);
-      } catch (error) {
+      } catch {
         res.status(500).send({ message: "Failed to load bookings" });
       }
     });
@@ -203,37 +250,37 @@ async function run() {
     // DELETE BOOKING
     app.delete("/bookings/:id", verifyToken, async (req, res) => {
       try {
-        const bookingId = req.params.id;
-
         const booking = await bookingsCollection.findOne({
-          _id: new ObjectId(bookingId),
+          _id: new ObjectId(req.params.id),
         });
 
         if (!booking) {
-          return res.status(404).send({ message: "Booking not found" });
+          return res.status(404).send({ message: "Not found" });
         }
 
         await bookingsCollection.deleteOne({
-          _id: new ObjectId(bookingId),
+          _id: new ObjectId(req.params.id),
         });
 
         await tutorsCollection.updateOne(
           { _id: new ObjectId(booking.tutorId) },
-          { $inc: { totalSlot: 1 } },
+          { $inc: { totalSlot: 1 } }
         );
 
         res.send({
           success: true,
-          message: "Booking cancelled successfully",
+          message: "Deleted successfully",
         });
-      } catch (error) {
-        res.status(500).send({ message: "Server error" });
+      } catch {
+        res.status(500).send({ message: "Error" });
       }
     });
 
-    app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
-  } catch (error) {
-    console.log("DB ERROR:", error);
+    app.listen(port, () =>
+      console.log(`🚀 Server running on port ${port}`)
+    );
+  } catch (err) {
+    console.log("DB ERROR:", err);
   }
 }
 
