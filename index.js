@@ -45,14 +45,14 @@ client
   .then(() => {
     const db = client.db("tutor");
 
-    tutorsCollection = db.collection("booking");
+    tutorsCollection = db.collection("Data");
     bookingsCollection = db.collection("bookings");
 
     console.log("🟢 MongoDB Connected");
   })
   .catch((err) => console.log("Mongo Error:", err));
 
-// JWT VERIFY 
+// JWT VERIFY
 const verifyToken = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
@@ -124,8 +124,6 @@ app.get("/tutor", async (req, res) => {
     res.status(500).send({ message: "Failed to load tutors" });
   }
 });
-
-
 
 // FEATURED
 app.get("/featured-tutors", async (req, res) => {
