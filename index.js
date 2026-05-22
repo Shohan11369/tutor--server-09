@@ -16,7 +16,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.use(express.json());
@@ -40,7 +40,8 @@ let tutorsCollection;
 let bookingsCollection;
 
 // connect once
-client.connect()
+client
+  .connect()
   .then(() => {
     const db = client.db("tutor");
 
@@ -64,7 +65,7 @@ const verifyToken = async (req, res, next) => {
     }
 
     const JWKS = createRemoteJWKSet(
-      new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
+      new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
     );
 
     const { payload } = await jwtVerify(token, JWKS);
@@ -104,8 +105,34 @@ app.post("/tutor", async (req, res) => {
 });
 
 // GET ALL TUTORS
+// app.get("/tutor", async (req, res) => {
+//   try {
+//     const search = req.query.search || "";
+
+//     const query = search
+//       ? {
+//           $or: [
+//             { tutorName: { $regex: search, $options: "i" } },
+//             { subject: { $regex: search, $options: "i" } },
+//           ],
+//         }
+//       : {};
+
+//     const result = await tutorsCollection.find(query).toArray();
+//     res.send(result);
+//   } catch (error) {
+//     res.status(500).send({ message: "Failed to load tutors" });
+//   }
+// });
+
 app.get("/tutor", async (req, res) => {
   try {
+    if (!tutorsCollection) {
+      return res.status(503).send({
+        message: "Database not ready yet",
+      });
+    }
+
     const search = req.query.search || "";
 
     const query = search
@@ -120,7 +147,8 @@ app.get("/tutor", async (req, res) => {
     const result = await tutorsCollection.find(query).toArray();
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Failed to load tutors" });
+    console.log(error);
+    res.status(500).send({ message: "Server error" });
   }
 });
 
@@ -186,7 +214,7 @@ app.patch("/tutor/:id", verifyToken, async (req, res) => {
       {
         $inc: { totalSlot: -1 },
         $set: { booked: true },
-      }
+      },
     );
 
     res.send({
@@ -230,7 +258,7 @@ app.delete("/bookings/:id", verifyToken, async (req, res) => {
 
     await tutorsCollection.updateOne(
       { _id: new ObjectId(booking.tutorId) },
-      { $inc: { totalSlot: 1 } }
+      { $inc: { totalSlot: 1 } },
     );
 
     res.send({
@@ -242,8 +270,6 @@ app.delete("/bookings/:id", verifyToken, async (req, res) => {
   }
 });
 
-
-
 // LOCAL SERVER
 if (require.main === module) {
   app.listen(port, () => {
@@ -252,4 +278,3 @@ if (require.main === module) {
 }
 // ================= EXPORT =================
 module.exports = app;
-
