@@ -9,10 +9,11 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 8080;
 
+// MIDDLEWARE
 app.use(
   cors({
     origin: "https://tutor-front-end-09.vercel.app",
-    // origin:"*",
+    // origin: "*",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -21,7 +22,12 @@ app.use(
 
 app.use(express.json());
 
-// MONGO SETUP
+// ROOT ROUTE
+app.get("/", (req, res) => {
+  res.send("Tutor Server Running");
+});
+
+// MONGO
 const client = new MongoClient(process.env.MONGODB_URI, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -36,7 +42,10 @@ const verifyToken = async (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized access",
+      });
     }
 
     const JWKS = createRemoteJWKSet(
@@ -46,25 +55,34 @@ const verifyToken = async (req, res, next) => {
     const { payload } = await jwtVerify(token, JWKS);
 
     req.user = payload;
+
     next();
   } catch (error) {
-    console.error("JWT ERROR Detail:", error.message);
-    return res.status(401).json({ message: "Invalid token" });
+    console.log("JWT ERROR:", error.message);
+
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    });
   }
 };
 
-// MAIN
+// MAIN FUNCTION
 async function run() {
   try {
     await client.connect();
 
-    const db = client.db("tutor");
-    const tutorsCollection = db.collection("booking");
-    const bookingsCollection = db.collection("bookings");
-
     console.log("🟢 MongoDB Connected");
 
+    const db = client.db("tutor");
+
+    // COLLECTIONS
+    const tutorsCollection = db.collection("tutors");
+    const bookingsCollection = db.collection("bookings");
+
+    // =========================================
     // ADD TUTOR
+    // =========================================
     app.post("/tutor", async (req, res) => {
       try {
         const newTutor = req.body;
@@ -84,51 +102,101 @@ async function run() {
         });
       } catch (error) {
         console.log(error);
-        res.status(500).send({ message: "Failed to add tutor" });
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to add tutor",
+        });
       }
     });
 
+    // =========================================
     // GET ALL TUTORS
+    // =========================================
     app.get("/tutor", async (req, res) => {
-      const search = req.query.search;
+      try {
+        const search = req.query.search || "";
 
-      const query = search
-        ? {
-            $or: [
-              { tutorName: { $regex: search, $options: "i" } },
-              { subject: { $regex: search, $options: "i" } },
-            ],
-          }
-        : {};
+        const query = search
+          ? {
+              $or: [
+                {
+                  tutorName: {
+                    $regex: search,
+                    $options: "i",
+                  },
+                },
+                {
+                  subject: {
+                    $regex: search,
+                    $options: "i",
+                  },
+                },
+              ],
+            }
+          : {};
 
-      const result = await tutorsCollection.find(query).toArray();
-      res.send(result);
+        const result = await tutorsCollection.find(query).toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to load tutors",
+        });
+      }
     });
 
-    // FEATURED
+    // =========================================
+    // FEATURED TUTORS
+    // =========================================
     app.get("/featured-tutors", async (req, res) => {
-      const result = await tutorsCollection.find({}).limit(4).toArray();
-      res.send(result);
+      try {
+        const result = await tutorsCollection.find({}).limit(4).toArray();
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to load featured tutors",
+        });
+      }
     });
 
+    // =========================================
     // SINGLE TUTOR
+    // =========================================
     app.get("/tutor/:id", async (req, res) => {
       try {
+        const id = req.params.id;
+
         const result = await tutorsCollection.findOne({
-          _id: new ObjectId(req.params.id),
+          _id: new ObjectId(id),
         });
 
         if (!result) {
-          return res.status(404).send({ message: "Tutor not found" });
+          return res.status(404).send({
+            success: false,
+            message: "Tutor not found",
+          });
         }
 
         res.send(result);
       } catch (error) {
-        res.status(500).send({ message: "Invalid ID" });
+        console.log(error);
+
+        res.status(500).send({
+          success: false,
+          message: "Invalid tutor ID",
+        });
       }
     });
 
+    // =========================================
     // BOOK TUTOR
+    // =========================================
     app.patch("/tutor/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
@@ -137,7 +205,14 @@ async function run() {
           _id: new ObjectId(id),
         });
 
-        if (!tutor || tutor.totalSlot <= 0) {
+        if (!tutor) {
+          return res.status(404).send({
+            success: false,
+            message: "Tutor not found",
+          });
+        }
+
+        if (tutor.totalSlot <= 0) {
           return res.status(400).send({
             success: false,
             message: "No slots available",
@@ -158,49 +233,62 @@ async function run() {
           bookedAt: new Date(),
         });
 
-        const result = await tutorsCollection.updateOne(
-          { _id: new ObjectId(id) },
+        await tutorsCollection.updateOne(
+          {
+            _id: new ObjectId(id),
+          },
           {
             $set: {
-              studentName: data.studentName,
-              studentEmail: data.studentEmail,
-              tutorName: data.tutorName,
-              tutorPhoto: data.tutorPhoto,
-              subject: data.subject,
-              hourlyFee: data.hourlyFee,
               booked: true,
               bookedAt: new Date(),
             },
-            $inc: { totalSlot: -1 },
+            $inc: {
+              totalSlot: -1,
+            },
           },
         );
 
         res.send({
           success: true,
           message: "Booking successful",
-          result,
         });
       } catch (error) {
-        res.status(500).send({ message: "Server error" });
+        console.log(error);
+
+        res.status(500).send({
+          success: false,
+          message: "Booking failed",
+        });
       }
     });
 
-    // BOOKINGS
+    // =========================================
+    // GET BOOKINGS
+    // =========================================
     app.get("/bookings", verifyToken, async (req, res) => {
       try {
         const email = req.user.email;
 
         const result = await bookingsCollection
-          .find({ studentEmail: email })
+          .find({
+            studentEmail: email,
+          })
           .toArray();
 
         res.send(result);
       } catch (error) {
-        res.status(500).send({ message: "Failed to load bookings" });
+        console.log(error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to load bookings",
+        });
       }
     });
 
+    // =========================================
     // DELETE BOOKING
+    // =========================================
     app.delete("/bookings/:id", verifyToken, async (req, res) => {
       try {
         const bookingId = req.params.id;
@@ -210,7 +298,10 @@ async function run() {
         });
 
         if (!booking) {
-          return res.status(404).send({ message: "Booking not found" });
+          return res.status(404).send({
+            success: false,
+            message: "Booking not found",
+          });
         }
 
         await bookingsCollection.deleteOne({
@@ -218,8 +309,14 @@ async function run() {
         });
 
         await tutorsCollection.updateOne(
-          { _id: new ObjectId(booking.tutorId) },
-          { $inc: { totalSlot: 1 } },
+          {
+            _id: new ObjectId(booking.tutorId),
+          },
+          {
+            $inc: {
+              totalSlot: 1,
+            },
+          },
         );
 
         res.send({
@@ -227,17 +324,27 @@ async function run() {
           message: "Booking cancelled successfully",
         });
       } catch (error) {
-        res.status(500).send({ message: "Server error" });
+        console.log(error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to cancel booking",
+        });
       }
     });
-
-    app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   } catch (error) {
-    console.log("DB error:", error);
+    console.log("DATABASE ERROR:", error);
   }
-  
 }
 
 run().catch(console.dir);
 
+// LOCAL SERVER
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`🚀 Server running on port ${port}`);
+  });
+}
+
+// EXPORT FOR VERCEL
 module.exports = app;
